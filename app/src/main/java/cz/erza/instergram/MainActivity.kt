@@ -68,15 +68,28 @@ class MainActivity : AppCompatActivity() {
             injectCSS(view)
             super.onPageFinished(view, url)
         }
+
+        override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
+            if(view?.getUrl() == "https://instagram.com")
+                view.loadUrl("https://www.instagram.com/?variant=following")
+            injectCSS(view)
+            super.doUpdateVisitedHistory(view, url, isReload)
+        }
     }
 
 }
 private fun injectCSS(webView: WebView?){
     try {
         val css = "a[href^=\"/reels\"] {display: none} button[type^=\"button\"]{display: none} ._aagu{display:none}" //your css as String
-        val js = "if(location == 'https://instagram.com/') location = '/?variant=following';" +
-                "var style = document.createElement('style'); style.innerHTML = '$css'; document.head.appendChild(style);"
+        val js = "var style = document.createElement('style'); style.innerHTML = '$css'; document.head.appendChild(style);"
         webView?.evaluateJavascript(js, null)
+        webView?.evaluateJavascript("window.onload = function() {\n" +
+                "    var bodyList = document.querySelector(\"body\")\n" +
+                "    var observer = new MutationObserver(function(mutations) {\n" +
+                "        if(document.location.href == 'https://www.instagram.com/') document.location = '/?variant=following'; console.log('change');\n" +
+                "    });\n" +
+                "    var config = {childList: true, subtree: true};\n" +
+                "    observer.observe(bodyList, config);};", null);
     } catch (e: Exception) {
         e.printStackTrace()
     }
