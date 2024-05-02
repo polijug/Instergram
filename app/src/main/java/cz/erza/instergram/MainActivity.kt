@@ -71,13 +71,11 @@ class MainActivity : AppCompatActivity() {
     }
 
 }
-inline fun Context.toast(message:String){
-    Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-}
 private fun injectCSS(webView: WebView?){
     try {
-        val css = "a[href^=\"/reels\"] {display: none} button[type^=\"button\"]{display: none}" //your css as String
-        val js = "var style = document.createElement('style'); style.innerHTML = '$css'; document.head.appendChild(style);"
+        val css = "a[href^=\"/reels\"] {display: none} button[type^=\"button\"]{display: none} ._aagu{display:none}" //your css as String
+        val js = "if(location == 'https://instagram.com/') location = '/?variant=following';" +
+                "var style = document.createElement('style'); style.innerHTML = '$css'; document.head.appendChild(style);"
         webView?.evaluateJavascript(js, null)
     } catch (e: Exception) {
         e.printStackTrace()
