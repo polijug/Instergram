@@ -85,7 +85,7 @@ class MainActivity : AppCompatActivity() {
             myActivity.filePath = filePathCallback
 
             val inte = fileChooserParams!!.createIntent()
-            inte.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+            //inte.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
             //myActivity.getFile.launch(inte)
             //startActivityForResult(myActivity, inte, 5, null);
             //filePathCallback!!.onReceiveValue( FileChooserParams.parseResult(RESULT_OK, inte));
