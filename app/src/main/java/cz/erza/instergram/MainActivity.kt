@@ -12,12 +12,15 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat.startActivityForResult
 import cz.erza.instergram.databinding.ActivityMainBinding
-
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+
+    var filePath: ValueCallback<Array<Uri?>?>? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -25,7 +28,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val webView: WebView = findViewById(R.id.webView)
-        webView.webViewClient = MyWebViewClient()
+        webView.webViewClient = MyWebViewClient(MainActivity())
+        webView.webChromeClient = MyWebChromeClient(this);
 
         // Load a web page
         val url = "https://instagram.com/direct/inbox"
@@ -38,28 +42,72 @@ class MainActivity : AppCompatActivity() {
 
         webView.settings.allowFileAccess = true
         webView.settings.allowContentAccess =true
+        /*val newUA = "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.4) Gecko/20100101 Firefox/4.0"
+        webView.getSettings().setUserAgentString(newUA)*/
 
         webView.loadUrl(url)
     }
 
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if(requestCode == 5){
+            filePath!!.onReceiveValue( WebChromeClient.FileChooserParams.parseResult(RESULT_OK, data));
+        }
+        super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    val getFile = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()) {
+        if (it.resultCode == Activity.RESULT_CANCELED) {
+            filePath?.onReceiveValue(null)
+        } else if (it.resultCode == Activity.RESULT_OK && filePath != null) {
+            filePath!!.onReceiveValue(
+                WebChromeClient.FileChooserParams.parseResult(it.resultCode, it.data))
+            filePath = null
+        }
+    }
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         val myWebView: WebView = findViewById(R.id.webView)
-        // Check whether the key event is the Back button and if there's history.
         if (keyCode == KeyEvent.KEYCODE_BACK && myWebView.canGoBack()) {
             myWebView.goBack()
             return true
         }
-        // If it isn't the Back button or there isn't web page history, bubble up to
-        // the default system behavior. Probably exit the activity.
         return super.onKeyDown(keyCode, event)
 
     }
-    private class MyWebViewClient : WebViewClient() {
+    private class MyWebChromeClient(private val myActivity: MainActivity) : WebChromeClient(){
+        override fun onShowFileChooser(
+            webView: WebView?,
+            filePathCallback: ValueCallback<Array<Uri?>?>?,
+            fileChooserParams: WebChromeClient.FileChooserParams?
+        ): Boolean {
+            myActivity.filePath = filePathCallback
+
+            val inte = fileChooserParams!!.createIntent()
+            inte.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+            //myActivity.getFile.launch(inte)
+            //startActivityForResult(myActivity, inte, 5, null);
+            //filePathCallback!!.onReceiveValue( FileChooserParams.parseResult(RESULT_OK, inte));
+
+            //val contentIntent = Intent(Intent.ACTION_GET_CONTENT)
+            /*contentIntent.type = "*//*"
+            contentIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+            contentIntent.addCategory(Intent.CATEGORY_OPENABLE)*/
+            //createChooser(contentIntent, "Fotky")
+
+            //val inte = createChooser(contentIntent, "Fotky")
+
+            startActivityForResult(myActivity, inte, 5, null);
+            return true
+        }
+    }
+    private class MyWebViewClient(private val myActivity: MainActivity) : WebViewClient() {
 
         override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-            if(url == "instagram.com/upload") return true;
+            if(url == "instagram.com/upload") return true
             injectCSS(view)
-            return false;
+            return false
         }
 
         override fun onLoadResource(view: WebView?, url: String?) {
@@ -86,8 +134,8 @@ class MainActivity : AppCompatActivity() {
 
 }
 private fun injectCSS(webView: WebView?){
-    try {
-        val css = "a[href^=\"/reels\"] {display: none} button[type^=\"button\"]{display: none}  a[href^=\"https://www.threads.net/\"]{display: none}" //your css as String
+    try {//button[type^="button"]{display: none}
+        val css = "a[href^=\"/reels\"] {display: none}  a[href^=\"https://www.threads.net/\"]{display: none}" //your css as String
         val js = "var style = document.createElement('style'); style.innerHTML = '$css'; document.head.appendChild(style);"
         webView?.evaluateJavascript(js, null)
         webView?.evaluateJavascript("window.onload = function() {\n" +
