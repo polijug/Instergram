@@ -1,14 +1,16 @@
 package cz.erza.instergram
 
-import android.content.Context
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
-import android.util.Base64
-import android.util.Log
 import android.view.KeyEvent
 import android.webkit.CookieManager
+import android.webkit.ValueCallback
+import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import cz.erza.instergram.databinding.ActivityMainBinding
 
@@ -16,7 +18,6 @@ import cz.erza.instergram.databinding.ActivityMainBinding
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -31,8 +32,12 @@ class MainActivity : AppCompatActivity() {
 
         CookieManager.getInstance().setAcceptCookie(true)
         webView.settings.javaScriptEnabled = true
-        //webView.settings.domStorageEnabled = true
-        //webView.settings.databaseEnabled = true
+
+        webView.settings.domStorageEnabled = true
+        webView.settings.databaseEnabled = true
+
+        webView.settings.allowFileAccess = true
+        webView.settings.allowContentAccess =true
 
         webView.loadUrl(url)
     }
@@ -52,6 +57,8 @@ class MainActivity : AppCompatActivity() {
     private class MyWebViewClient : WebViewClient() {
 
         override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+            if(url == "instagram.com/upload") return true;
+            injectCSS(view)
             return false;
         }
 
@@ -70,7 +77,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
-            if(view?.getUrl() == "https://instagram.com")
+            if(view?.getUrl() == "https://www.instagram.com/")
                 view.loadUrl("https://www.instagram.com/?variant=following")
             injectCSS(view)
             super.doUpdateVisitedHistory(view, url, isReload)
@@ -80,16 +87,20 @@ class MainActivity : AppCompatActivity() {
 }
 private fun injectCSS(webView: WebView?){
     try {
-        val css = "a[href^=\"/reels\"] {display: none} a[href^='https://www.threads.net/']{display: none} button[type^=\"button\"]{display: none} ._aagu{display:none}" //your css as String
+        val css = "a[href^=\"/reels\"] {display: none} button[type^=\"button\"]{display: none}  a[href^=\"https://www.threads.net/\"]{display: none}" //your css as String
         val js = "var style = document.createElement('style'); style.innerHTML = '$css'; document.head.appendChild(style);"
         webView?.evaluateJavascript(js, null)
         webView?.evaluateJavascript("window.onload = function() {\n" +
                 "    var bodyList = document.querySelector(\"body\")\n" +
                 "    var observer = new MutationObserver(function(mutations) {\n" +
-                "        if(document.location.href == 'https://www.instagram.com/') document.location = '/?variant=following'; console.log('change');\n" +
+                "if(document.location.href == 'https://www.instagram.com/?variant=following') document.querySelectorAll(\"svg[aria-label='Back']\")[0].style.display =  \"none\";" +
+                "   document.querySelectorAll(\"._abl-\").forEach( (elem) => elem.style.display = \"block\");" +
+                "if(document.location.href == 'https://www.instagram.com/explore/') document.querySelectorAll(\"._aagu\").forEach( (elem) => elem.style.display = \"none\");" +
+                "document.querySelectorAll(\"a[href='/']\").forEach( (elem) => elem.href = \"/?variant=following\");" +
+                "        if(document.location.href == 'https://www.instagram.com/') document.location = '/?variant=following';\n" +
                 "    });\n" +
-                "    var config = {childList: true, subtree: true};\n" +
-                "    observer.observe(bodyList, config);};", null);
+                "    var config = {childList: true, subtree: false};\n" +
+                "    observer.observe(bodyList, config);}; \n", null);
     } catch (e: Exception) {
         e.printStackTrace()
     }
