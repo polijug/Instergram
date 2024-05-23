@@ -80,7 +80,7 @@ class MainActivity : AppCompatActivity() {
 }
 private fun injectCSS(webView: WebView?){
     try {
-        val css = "a[href^=\"/reels\"] {display: none} button[type^=\"button\"]{display: none} ._aagu{display:none}" //your css as String
+        val css = "a[href^=\"/reels\"] {display: none} a[href^='https://www.threads.net/']{display: none} button[type^=\"button\"]{display: none} ._aagu{display:none}" //your css as String
         val js = "var style = document.createElement('style'); style.innerHTML = '$css'; document.head.appendChild(style);"
         webView?.evaluateJavascript(js, null)
         webView?.evaluateJavascript("window.onload = function() {\n" +
