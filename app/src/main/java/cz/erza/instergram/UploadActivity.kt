@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import android.view.KeyEvent
 import android.webkit.CookieManager
 import android.webkit.ValueCallback
@@ -14,30 +13,30 @@ import android.webkit.WebViewClient
 import android.widget.Button
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat.startActivityForResult
-import cz.erza.instergram.databinding.ActivityMainBinding
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 
-class MainActivity : AppCompatActivity() {
-
-    private lateinit var binding: ActivityMainBinding
-
+class UploadActivity : AppCompatActivity() {
     var filePath: ValueCallback<Array<Uri?>?>? = null
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        //enableEdgeToEdge()
+        setContentView(R.layout.activity_upload)
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+            insets
+        }
 
         val button: Button = findViewById(R.id.upload)
         button.setOnClickListener {
-            val intent = Intent(this@MainActivity, UploadActivity::class.java)
+            val intent = Intent(this@UploadActivity, MainActivity::class.java)
             startActivity(intent)
         }
 
         val webView: WebView = findViewById(R.id.webView)
-        webView.webViewClient = MyWebViewClient(MainActivity())
-        webView.webChromeClient = MyWebChromeClient(this);
+        webView.webViewClient = UploadActivity.MyWebViewClient(MainActivity())
+        webView.webChromeClient = UploadActivity.MyWebChromeClient(this);
 
         // Load a web page
         val url = "https://instagram.com/direct/inbox"
@@ -50,13 +49,11 @@ class MainActivity : AppCompatActivity() {
 
         webView.settings.allowFileAccess = true
         webView.settings.allowContentAccess =true
-        //val newUA = "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.4) Gecko/20100101 Firefox/4.0"
-        //webView.getSettings().setUserAgentString(newUA)
+        val newUA = "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.4) Gecko/20100101 Firefox/4.0"
+        webView.getSettings().setUserAgentString(newUA)
 
         webView.loadUrl(url)
     }
-
-
     val getFile = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()) {
         if (it.resultCode == Activity.RESULT_CANCELED) {
@@ -65,11 +62,10 @@ class MainActivity : AppCompatActivity() {
             filePath!!.onReceiveValue(
 
                 //WebChromeClient.FileChooserParams.parseResult(it.resultCode, it.data))
-            test(it.data, it.resultCode))
+                test(it.data, it.resultCode))
             filePath = null
         }
     }
-
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         val myWebView: WebView = findViewById(R.id.webView)
         if (keyCode == KeyEvent.KEYCODE_BACK && myWebView.canGoBack()) {
@@ -79,7 +75,7 @@ class MainActivity : AppCompatActivity() {
         return super.onKeyDown(keyCode, event)
 
     }
-    private class MyWebChromeClient(private val myActivity: MainActivity) : WebChromeClient(){
+    private class MyWebChromeClient(private val myActivity: UploadActivity) : WebChromeClient(){
         override fun onShowFileChooser(
             webView: WebView?,
             filePathCallback: ValueCallback<Array<Uri?>?>?,
@@ -133,46 +129,8 @@ class MainActivity : AppCompatActivity() {
         override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
             if(view?.getUrl() == "https://www.instagram.com/")
                 view.loadUrl("https://www.instagram.com/?variant=following")
-            injectCSS(view)
+            injectCSS(view, true)
             super.doUpdateVisitedHistory(view, url, isReload)
         }
     }
-
-}
-fun injectCSS(webView: WebView?, upload: Boolean = false){
-    try {//button[type^="button"]{display: none}
-        val css = "a[href^=\"/reels\"] {display: none}  a[href^=\"https://www.threads.net/\"]{display: none}" //your css as String
-        val js = "var style = document.createElement('style'); style.innerHTML = '$css'; document.head.appendChild(style);"
-        webView?.evaluateJavascript(js, null)
-        webView?.evaluateJavascript("window.onload = function() {\n" +
-                "    var bodyList = document.querySelector(\"body\")\n" +
-                "    var observer = new MutationObserver(function(mutations) {\n" +
-                "if(document.location.href == 'https://www.instagram.com/?variant=following') document.querySelectorAll(\"svg[aria-label='Back']\")[0].style.display =  \"none\"; \n" +
-                "   document.querySelectorAll(\"._abl-\").forEach( (elem) => elem.style.display = \"block\"); \n" +
-                "if(document.location.href.includes(\"/explore/\")) document.querySelectorAll(\"._aagu\").forEach( (elem) => elem.style.display = \"none\");" + //._aagu
-                "document.querySelectorAll(\"a[href='/']\").forEach( (elem) => elem.href = \"/?variant=following\");" +
-                "        if(document.location.href == 'https://www.instagram.com/') document.location = '/?variant=following';\n" +
-                "    });\n" +
-                "    var config = {childList: true, subtree: true};\n" +
-                "    observer.observe(bodyList, config);}; \n", null);
-        if(upload){
-            webView?.evaluateJavascript("document.querySelector('div[style^=\"max-height\"]').style = \"max-height=100%; min-width: 80%; max-width:80%\"; \n" +
-                    "document.querySelector('div[style^=\"min-width\"]').style = \"max-height=100%; min-width: 80%; max-width:80%\"; \n" +
-                    "document.querySelector('div:has(> div > div > div > div > img[alt=\"Photo for tag placement\"])').style = \"height:50px; width: 50px\";", null)
-        }
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
-}
-
-fun test(data: Intent?, code: Int): Array<Uri?>?{
-    var ret: Array<Uri?>? = arrayOfNulls(data!!.clipData!!.itemCount);
-    //var dat = WebChromeClient.FileChooserParams.parseResult(code, data)
-    Log.e("get file", data!!.clipData!!.itemCount.toString()) //data!!.clipData!!.getItemAt(0).uri
-    //data!!.clipData!!.itemCount
-    for(item in 1..data.clipData!!.itemCount){
-        ret?.set(item-1, data.clipData!!.getItemAt(item-1).uri)
-    }
-    Log.e("get file", ret.toString())
-    return ret;
 }
