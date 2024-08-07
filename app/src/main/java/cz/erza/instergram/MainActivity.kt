@@ -6,6 +6,8 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
+import android.view.View.INVISIBLE
+import android.view.View.VISIBLE
 import android.webkit.CookieManager
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -14,7 +16,6 @@ import android.webkit.WebViewClient
 import android.widget.Button
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat.startActivityForResult
 import cz.erza.instergram.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -50,8 +51,6 @@ class MainActivity : AppCompatActivity() {
 
         webView.settings.allowFileAccess = true
         webView.settings.allowContentAccess =true
-        //val newUA = "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.4) Gecko/20100101 Firefox/4.0"
-        //webView.getSettings().setUserAgentString(newUA)
 
         webView.loadUrl(url)
     }
@@ -118,12 +117,26 @@ class MainActivity : AppCompatActivity() {
         override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
             if(view?.getUrl() == "https://www.instagram.com/")
                 view.loadUrl("https://www.instagram.com/?variant=following")
-            injectCSS(view)
-            super.doUpdateVisitedHistory(view, url, isReload)
+            else{
+                if(view?.url?.contains("direct") == true)
+                    hideButton(true)
+                else hideButton(false)
+                injectCSS(view)
+                super.doUpdateVisitedHistory(view, url, isReload)
+            }
         }
-    }
 
+        fun hideButton(b: Boolean){
+            val button: Button = myActivity.findViewById(R.id.upload)
+            if(!b)
+                button.visibility = VISIBLE;
+            else
+                button.visibility = INVISIBLE;
+        }
+
+    }
 }
+
 fun injectCSS(webView: WebView?, upload: Boolean = false){
     try {//button[type^="button"]{display: none}
         val css = "a[href^=\"/reels\"] {display: none}  a[href^=\"https://www.threads.net/\"]{display: none}" //your css as String
