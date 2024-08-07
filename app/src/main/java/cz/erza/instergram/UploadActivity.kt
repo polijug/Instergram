@@ -60,9 +60,7 @@ class UploadActivity : AppCompatActivity() {
             filePath?.onReceiveValue(null)
         } else if (it.resultCode == Activity.RESULT_OK && filePath != null) {
             filePath!!.onReceiveValue(
-
-                //WebChromeClient.FileChooserParams.parseResult(it.resultCode, it.data))
-                test(it.data, it.resultCode))
+                uriFormate(it.data, it.resultCode))
             filePath = null
         }
     }
@@ -86,19 +84,6 @@ class UploadActivity : AppCompatActivity() {
             val inte = fileChooserParams!!.createIntent()
             //inte.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
             myActivity.getFile.launch(inte)
-            //myActivity.startActivityForResult(inte, 5);
-            //startActivityForResult(myActivity, inte, 5, null);
-            //filePathCallback!!.onReceiveValue( FileChooserParams.parseResult(RESULT_OK, inte));
-
-            //val contentIntent = Intent(Intent.ACTION_GET_CONTENT)
-            /*contentIntent.type = "*//*"
-            contentIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-            contentIntent.addCategory(Intent.CATEGORY_OPENABLE)*/
-            //createChooser(contentIntent, "Fotky")
-
-            //val inte = createChooser(contentIntent, "Fotky")
-
-            //startActivityForResult(myActivity, inte, 5, null);
             return true
         }
     }
