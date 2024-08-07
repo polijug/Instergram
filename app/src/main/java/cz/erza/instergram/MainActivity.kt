@@ -156,9 +156,16 @@ fun injectCSS(webView: WebView?, upload: Boolean = false){
                 "    var config = {childList: true, subtree: true};\n" +
                 "    observer.observe(bodyList, config);}; \n", null);
         if(upload){
-            webView?.evaluateJavascript("document.querySelector('div[style^=\"max-height\"]').style = \"max-height=100%; min-width: 80%; max-width:80%\"; \n" +
-                    "document.querySelector('div[style^=\"min-width\"]').style = \"max-height=100%; min-width: 80%; max-width:80%\"; \n" +
-                    "document.querySelector('div:has(> div > div > div > div > img[alt=\"Photo for tag placement\"])').style = \"height:50px; width: 50px\";", null)
+            Log.v("test", "here");
+            webView?.evaluateJavascript("window.onload = function() {\n" +
+                    "var observ = new MutationObserver(function(mutations) {\n" +
+                    "document.querySelector('div[style^=\"max-height\"]').style = \"max-height=100%; min-width: 100px; max-width:80%; width: 100px;\"; \n" +
+                    "document.querySelector('div[style^=\"min-width\"]').style = \"max-height=100%; min-width: 100px; max-width:80%; width: 100px;\"; \n" +
+                    "document.querySelector('div:has(> div > div > div > div > img[alt=\"Photo for tag placement\"])').style = \"height:50px; width: 50px\";" +
+                    "console.log('test'); });\n" +
+                    "var config = {childList: true, subtree: true};\n" +
+                    "var bodyList = document.querySelector(\"body\") \n" +
+                    "observ.observe(bodyList, config);}", null)
         }
     } catch (e: Exception) {
         e.printStackTrace()

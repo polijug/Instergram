@@ -108,12 +108,12 @@ class UploadActivity : AppCompatActivity() {
 
         override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
             if(url == "instagram.com/upload") return true
-            injectCSS(view)
+            injectCSS(view, true)
             return false
         }
 
         override fun onLoadResource(view: WebView?, url: String?) {
-            injectCSS(view)
+            injectCSS(view, true)
             print(view?.url);
             if(view?.getUrl() == "https://instagram.com/")
                 view.loadUrl("https://www.instagram.com/?variant=following")
@@ -122,7 +122,7 @@ class UploadActivity : AppCompatActivity() {
         override fun onPageFinished(view: WebView?, url: String?) {
             if(view?.getUrl() == "https://instagram.com/")
                 view.loadUrl("https://www.instagram.com/?variant=following")
-            injectCSS(view)
+            injectCSS(view, true)
             super.onPageFinished(view, url)
         }
 
