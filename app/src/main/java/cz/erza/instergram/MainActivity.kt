@@ -1,13 +1,12 @@
 package cz.erza.instergram
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
-import android.view.View.INVISIBLE
-import android.view.View.VISIBLE
 import android.webkit.CookieManager
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -24,6 +23,7 @@ class MainActivity : AppCompatActivity() {
 
     var filePath: ValueCallback<Array<Uri?>?>? = null
 
+    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -37,8 +37,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         val webView: WebView = findViewById(R.id.webView)
-        webView.webViewClient = MyWebViewClient(MainActivity())
-        webView.webChromeClient = MyWebChromeClient(this);
+        webView.webViewClient = MyWebViewClient()
+        webView.webChromeClient = MyWebChromeClient(this)
 
         // Load a web page
         val url = "https://instagram.com/direct/inbox"
@@ -62,7 +62,7 @@ class MainActivity : AppCompatActivity() {
             filePath?.onReceiveValue(null)
         } else if (it.resultCode == Activity.RESULT_OK && filePath != null) {
             filePath!!.onReceiveValue(
-            uriFormate(it.data, it.resultCode))
+            uriFormate(it.data))
             filePath = null
         }
     }
@@ -80,7 +80,7 @@ class MainActivity : AppCompatActivity() {
         override fun onShowFileChooser(
             webView: WebView?,
             filePathCallback: ValueCallback<Array<Uri?>?>?,
-            fileChooserParams: WebChromeClient.FileChooserParams?
+            fileChooserParams: FileChooserParams?
         ): Boolean {
             myActivity.filePath = filePathCallback
 
@@ -92,8 +92,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     //parse array of files - how? i need tp know the format
-    private class MyWebViewClient(private val myActivity: MainActivity) : WebViewClient() {
+    private class MyWebViewClient : WebViewClient() {
 
+        @Deprecated("Deprecated in Java")
         override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
             if(url == "instagram.com/upload") return true
             injectCSS(view)
@@ -102,7 +103,7 @@ class MainActivity : AppCompatActivity() {
 
         override fun onLoadResource(view: WebView?, url: String?) {
             injectCSS(view)
-            print(view?.url);
+            print(view?.url)
             if(view?.getUrl() == "https://instagram.com/")
                 view.loadUrl("https://www.instagram.com/?variant=following")
             super.onLoadResource(view, url)
@@ -140,9 +141,9 @@ fun injectCSS(webView: WebView?, upload: Boolean = false){
                 "        if(document.location.href == 'https://www.instagram.com/') document.location = '/?variant=following';\n" +
                 "    });\n" +
                 "    var config = {childList: true, subtree: true};\n" +
-                "    observer.observe(bodyList, config);}; \n", null);
+                "    observer.observe(bodyList, config);}; \n", null)
         if(upload){
-            Log.v("test", "here");
+            Log.v("test", "here")
             webView?.evaluateJavascript("window.onload = function() {\n" +
                     "var observ = new MutationObserver(function(mutations) {\n" +
                     "document.querySelector('div[style^=\"max-height\"]').style = \"max-height=100%; min-width: 100px; max-width:80%; width: 100px;\"; \n" +
@@ -158,14 +159,12 @@ fun injectCSS(webView: WebView?, upload: Boolean = false){
     }
 }
 
-fun uriFormate(data: Intent?, code: Int): Array<Uri?>?{
-    var ret: Array<Uri?>? = arrayOfNulls(data!!.clipData!!.itemCount);
-    //var dat = WebChromeClient.FileChooserParams.parseResult(code, data)
-    Log.e("get file", data.clipData!!.itemCount.toString()) //data!!.clipData!!.getItemAt(0).uri
-    //data!!.clipData!!.itemCount
+fun uriFormate(data: Intent?): Array<Uri?>?{
+    val ret: Array<Uri?>? = arrayOfNulls(data!!.clipData!!.itemCount)
+    Log.e("get file", data.clipData!!.itemCount.toString())
     for(item in 1..data.clipData!!.itemCount){
         ret?.set(item-1, data.clipData!!.getItemAt(item-1).uri)
     }
     Log.e("get file", ret.toString())
-    return ret;
+    return ret
 }

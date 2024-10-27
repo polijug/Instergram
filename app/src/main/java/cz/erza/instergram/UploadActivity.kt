@@ -1,5 +1,6 @@
 package cz.erza.instergram
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
@@ -18,6 +19,7 @@ import androidx.core.view.WindowInsetsCompat
 
 class UploadActivity : AppCompatActivity() {
     var filePath: ValueCallback<Array<Uri?>?>? = null
+    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         //enableEdgeToEdge()
@@ -35,8 +37,8 @@ class UploadActivity : AppCompatActivity() {
         }
 
         val webView: WebView = findViewById(R.id.webView)
-        webView.webViewClient = UploadActivity.MyWebViewClient(MainActivity())
-        webView.webChromeClient = UploadActivity.MyWebChromeClient(this);
+        webView.webViewClient = MyWebViewClient()
+        webView.webChromeClient = MyWebChromeClient(this)
 
         // Load a web page
         val url = "https://instagram.com/direct/inbox"
@@ -50,7 +52,7 @@ class UploadActivity : AppCompatActivity() {
         webView.settings.allowFileAccess = true
         webView.settings.allowContentAccess =true
         val newUA = "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.4) Gecko/20100101 Firefox/4.0"
-        webView.getSettings().setUserAgentString(newUA)
+        webView.getSettings().userAgentString = newUA
 
         webView.loadUrl(url)
     }
@@ -60,7 +62,7 @@ class UploadActivity : AppCompatActivity() {
             filePath?.onReceiveValue(null)
         } else if (it.resultCode == Activity.RESULT_OK && filePath != null) {
             filePath!!.onReceiveValue(
-                uriFormate(it.data, it.resultCode))
+                uriFormate(it.data))
             filePath = null
         }
     }
@@ -77,7 +79,7 @@ class UploadActivity : AppCompatActivity() {
         override fun onShowFileChooser(
             webView: WebView?,
             filePathCallback: ValueCallback<Array<Uri?>?>?,
-            fileChooserParams: WebChromeClient.FileChooserParams?
+            fileChooserParams: FileChooserParams?
         ): Boolean {
             myActivity.filePath = filePathCallback
 
@@ -89,8 +91,9 @@ class UploadActivity : AppCompatActivity() {
     }
 
     //parse array of files - how? i need tp know the format
-    private class MyWebViewClient(private val myActivity: MainActivity) : WebViewClient() {
+    private class MyWebViewClient : WebViewClient() {
 
+        @Deprecated("Deprecated in Java")
         override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
             if(url == "instagram.com/upload") return true
             injectCSS(view, true)
@@ -99,7 +102,7 @@ class UploadActivity : AppCompatActivity() {
 
         override fun onLoadResource(view: WebView?, url: String?) {
             injectCSS(view, true)
-            print(view?.url);
+            print(view?.url)
             if(view?.getUrl() == "https://instagram.com/")
                 view.loadUrl("https://www.instagram.com/?variant=following")
             super.onLoadResource(view, url)
