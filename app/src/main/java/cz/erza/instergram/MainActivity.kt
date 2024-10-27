@@ -118,22 +118,10 @@ class MainActivity : AppCompatActivity() {
             if(view?.getUrl() == "https://www.instagram.com/")
                 view.loadUrl("https://www.instagram.com/?variant=following")
             else{
-                if(view?.url?.contains("direct") == true)
-                    hideButton(true)
-                else hideButton(false)
                 injectCSS(view)
                 super.doUpdateVisitedHistory(view, url, isReload)
             }
         }
-
-        fun hideButton(b: Boolean){
-            val button: Button = myActivity.findViewById(R.id.upload)
-            if(!b)
-                button.visibility = VISIBLE;
-            else
-                button.visibility = INVISIBLE;
-        }
-
     }
 }
 
@@ -173,7 +161,7 @@ fun injectCSS(webView: WebView?, upload: Boolean = false){
 fun uriFormate(data: Intent?, code: Int): Array<Uri?>?{
     var ret: Array<Uri?>? = arrayOfNulls(data!!.clipData!!.itemCount);
     //var dat = WebChromeClient.FileChooserParams.parseResult(code, data)
-    Log.e("get file", data!!.clipData!!.itemCount.toString()) //data!!.clipData!!.getItemAt(0).uri
+    Log.e("get file", data.clipData!!.itemCount.toString()) //data!!.clipData!!.getItemAt(0).uri
     //data!!.clipData!!.itemCount
     for(item in 1..data.clipData!!.itemCount){
         ret?.set(item-1, data.clipData!!.getItemAt(item-1).uri)
