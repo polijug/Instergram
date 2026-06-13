@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
+import android.view.View
 import android.webkit.CookieManager
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -37,7 +38,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val webView: WebView = findViewById(R.id.webView)
-        webView.webViewClient = MyWebViewClient()
+        webView.webViewClient = MyWebViewClient(button)
         webView.webChromeClient = MyWebChromeClient(this)
 
         // Load a web page
@@ -92,7 +93,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     //parse array of files - how? i need tp know the format
-    private class MyWebViewClient : WebViewClient() {
+    private class MyWebViewClient(private val button : Button) : WebViewClient() {
 
         @Deprecated("Deprecated in Java")
         override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
@@ -106,11 +107,17 @@ class MainActivity : AppCompatActivity() {
             print(view?.url)
             if(view?.getUrl() == "https://instagram.com/")
                 view.loadUrl("https://www.instagram.com/?variant=following")
+
+            hideButton(view?.url, button)
+
             super.onLoadResource(view, url)
         }
         override fun onPageFinished(view: WebView?, url: String?) {
             if(view?.getUrl() == "https://instagram.com/")
                 view.loadUrl("https://www.instagram.com/?variant=following")
+
+            hideButton(view?.url, button);
+
             injectCSS(view)
             super.onPageFinished(view, url)
         }
@@ -119,11 +126,22 @@ class MainActivity : AppCompatActivity() {
             if(view?.getUrl() == "https://www.instagram.com/")
                 view.loadUrl("https://www.instagram.com/?variant=following")
             else{
+
+                hideButton(view?.url, button);
+
                 injectCSS(view)
                 super.doUpdateVisitedHistory(view, url, isReload)
             }
         }
     }
+}
+
+fun hideButton(url: String?, button: Button){
+    Log.e("test", url!!)
+    if(url.startsWith("https://www.instagram.com/direct/"))
+        button.visibility = View.INVISIBLE;
+    else
+        button.visibility = View.VISIBLE;
 }
 
 fun injectCSS(webView: WebView?, upload: Boolean = false){
