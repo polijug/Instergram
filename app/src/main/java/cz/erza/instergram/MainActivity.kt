@@ -31,52 +31,48 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val button: Button = findViewById(R.id.upload)
-        button.setOnClickListener {
+        binding.upload.setOnClickListener {
             val intent = Intent(this@MainActivity, UploadActivity::class.java)
             startActivity(intent)
         }
 
-        val webView: WebView = findViewById(R.id.webView)
-        webView.webViewClient = MyWebViewClient(button)
-        webView.webChromeClient = MyWebChromeClient(this)
+        binding.webView.webViewClient = MyWebViewClient(binding.upload)
+        binding.webView.webChromeClient = MyWebChromeClient(this)
 
         // Load a web page
         val url = "https://instagram.com/direct/inbox"
 
         CookieManager.getInstance().setAcceptCookie(true)
-        webView.settings.javaScriptEnabled = true
+        binding.webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            databaseEnabled = true
+            allowFileAccess = true
+            allowContentAccess = true
+        }
 
-        webView.settings.domStorageEnabled = true
-        webView.settings.databaseEnabled = true
-
-        webView.settings.allowFileAccess = true
-        webView.settings.allowContentAccess =true
-
-        webView.loadUrl(url)
+        binding.webView.loadUrl(url)
     }
 
-
     val getFile = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()) {
-        if (it.resultCode == Activity.RESULT_CANCELED) {
-            filePath?.onReceiveValue(null)
-        } else if (it.resultCode == Activity.RESULT_OK && filePath != null) {
-            filePath!!.onReceiveValue(
-            uriFormate(it.data))
-            filePath = null
+        ActivityResultContracts.StartActivityForResult()) { result ->
+        val uris = if (result.resultCode == Activity.RESULT_OK) {
+            uriFormate(result.data)
+        } else {
+            null
         }
+        filePath?.onReceiveValue(uris)
+        filePath = null
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        val myWebView: WebView = findViewById(R.id.webView)
-        if (keyCode == KeyEvent.KEYCODE_BACK && myWebView.canGoBack()) {
-            myWebView.goBack()
+        if (keyCode == KeyEvent.KEYCODE_BACK && binding.webView.canGoBack()) {
+            binding.webView.goBack()
             return true
         }
         return super.onKeyDown(keyCode, event)
-
     }
+
     private class MyWebChromeClient(private val myActivity: MainActivity) : WebChromeClient(){
         override fun onShowFileChooser(
             webView: WebView?,
@@ -85,50 +81,47 @@ class MainActivity : AppCompatActivity() {
         ): Boolean {
             myActivity.filePath = filePathCallback
 
-            val inte = fileChooserParams!!.createIntent()
-            //inte.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-            myActivity.getFile.launch(inte)
-            return true
+            val intent = fileChooserParams?.createIntent()
+            if (intent != null) {
+                myActivity.getFile.launch(intent)
+                return true
+            }
+            return false
         }
     }
 
-    //parse array of files - how? i need tp know the format
     private class MyWebViewClient(private val button : Button) : WebViewClient() {
 
         @Deprecated("Deprecated in Java")
         override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-            if(url == "instagram.com/upload") return true
+            if(url != null && url.contains("instagram.com/upload")) return true
             injectCSS(view)
             return false
         }
 
         override fun onLoadResource(view: WebView?, url: String?) {
-            injectCSS(view)
-            print(view?.url)
-            if(view?.getUrl() == "https://instagram.com/")
+            // Removed injectCSS from here to prevent resource exhaustion and crashes
+            if(view?.url == "https://instagram.com/")
                 view.loadUrl("https://www.instagram.com/?variant=following")
 
             hideButton(view?.url, button)
-
             super.onLoadResource(view, url)
         }
+
         override fun onPageFinished(view: WebView?, url: String?) {
-            if(view?.getUrl() == "https://instagram.com/")
+            if(view?.url == "https://instagram.com/")
                 view.loadUrl("https://www.instagram.com/?variant=following")
 
-            hideButton(view?.url, button);
-
+            hideButton(url, button)
             injectCSS(view)
             super.onPageFinished(view, url)
         }
 
         override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
-            if(view?.getUrl() == "https://www.instagram.com/")
-                view.loadUrl("https://www.instagram.com/?variant=following")
-            else{
-
-                hideButton(view?.url, button);
-
+            if(url == "https://www.instagram.com/") {
+                view?.loadUrl("https://www.instagram.com/?variant=following")
+            } else {
+                hideButton(url, button)
                 injectCSS(view)
                 super.doUpdateVisitedHistory(view, url, isReload)
             }
@@ -137,52 +130,89 @@ class MainActivity : AppCompatActivity() {
 }
 
 fun hideButton(url: String?, button: Button){
-    Log.e("test", url!!)
+    if (url == null) return
+    Log.d("Instergram", "URL: $url")
     if(url.startsWith("https://www.instagram.com/direct/"))
-        button.visibility = View.INVISIBLE;
+        button.visibility = View.INVISIBLE
     else
-        button.visibility = View.VISIBLE;
+        button.visibility = View.VISIBLE
 }
 
 fun injectCSS(webView: WebView?, upload: Boolean = false){
-    try {//button[type^="button"]{display: none}
-        val css = "a[href^=\"/reels\"] {display: none}  a[href^=\"https://www.threads.net/\"]{display: none}" //your css as String
-        val js = "var style = document.createElement('style'); style.innerHTML = '$css'; document.head.appendChild(style);"
+    try {
+        val css = "a[href^=\"/reels\"] {display: none}  a[href^=\"https://www.threads.net/\"]{display: none}"
+        val js = """
+            (function() {
+                var style = document.getElementById('injected-style');
+                if (!style) {
+                    style = document.createElement('style');
+                    style.id = 'injected-style';
+                    document.head.appendChild(style);
+                }
+                style.innerHTML = '$css';
+                
+                if (!window.injectedObserver) {
+                    var observer = new MutationObserver(function(mutations) {
+                        if(document.location.href == 'https://www.instagram.com/?variant=following') {
+                            var backBtn = document.querySelectorAll("svg[aria-label='Back']")[0];
+                            if (backBtn) backBtn.style.display = "none";
+                        }
+                        document.querySelectorAll("._abl-").forEach((elem) => elem.style.display = "block");
+                        if(document.location.href.includes("/explore/")) {
+                            document.querySelectorAll("._aagu").forEach((elem) => elem.style.display = "none");
+                        }
+                        document.querySelectorAll("a[href='/']").forEach((elem) => elem.href = "/?variant=following");
+                        if(document.location.href == 'https://www.instagram.com/') document.location = '/?variant=following';
+                    });
+                    observer.observe(document.body, {childList: true, subtree: true});
+                    window.injectedObserver = true;
+                }
+            })();
+        """.trimIndent()
         webView?.evaluateJavascript(js, null)
-        webView?.evaluateJavascript("window.onload = function() {\n" +
-                "    var bodyList = document.querySelector(\"body\")\n" +
-                "    var observer = new MutationObserver(function(mutations) {\n" +
-                "if(document.location.href == 'https://www.instagram.com/?variant=following') document.querySelectorAll(\"svg[aria-label='Back']\")[0].style.display =  \"none\"; \n" +
-                "   document.querySelectorAll(\"._abl-\").forEach( (elem) => elem.style.display = \"block\"); \n" +
-                "if(document.location.href.includes(\"/explore/\")) document.querySelectorAll(\"._aagu\").forEach( (elem) => elem.style.display = \"none\");" + //._aagu
-                "document.querySelectorAll(\"a[href='/']\").forEach( (elem) => elem.href = \"/?variant=following\");" +
-                "        if(document.location.href == 'https://www.instagram.com/') document.location = '/?variant=following';\n" +
-                "    });\n" +
-                "    var config = {childList: true, subtree: true};\n" +
-                "    observer.observe(bodyList, config);}; \n", null)
+        
         if(upload){
-            Log.v("test", "here")
-            webView?.evaluateJavascript("window.onload = function() {\n" +
-                    "var observ = new MutationObserver(function(mutations) {\n" +
-                    "document.querySelector('div[style^=\"max-height\"]').style = \"max-height=100%; min-width: 100px; max-width:80%; width: 100px;\"; \n" +
-                    "document.querySelector('div[style^=\"min-width\"]').style = \"max-height=100%; min-width: 100px; max-width:80%; width: 100px;\"; \n" +
-                    "document.querySelector('div:has(> div > div > div > div > img[alt=\"Photo for tag placement\"])').style = \"height:50px; width: 50px\";" +
-                    "console.log('test'); });\n" +
-                    "var config = {childList: true, subtree: true};\n" +
-                    "var bodyList = document.querySelector(\"body\") \n" +
-                    "observ.observe(bodyList, config);}", null)
+            val uploadJs = """
+                (function() {
+                    if (!window.uploadObserver) {
+                        var observ = new MutationObserver(function(mutations) {
+                            var maxHeightDiv = document.querySelector('div[style^="max-height"]');
+                            if (maxHeightDiv) maxHeightDiv.style = "max-height: 100%; min-width: 100px; max-width: 80%; width: 100px;";
+                            
+                            var minWidthDiv = document.querySelector('div[style^="min-width"]');
+                            if (minWidthDiv) minWidthDiv.style = "max-height: 100%; min-width: 100px; max-width: 80%; width: 100px;";
+                            
+                            var photoDiv = document.querySelector('div:has(> div > div > div > div > img[alt="Photo for tag placement"])');
+                            if (photoDiv) photoDiv.style = "height: 50px; width: 50px";
+                        });
+                        observ.observe(document.body, {childList: true, subtree: true});
+                        window.uploadObserver = true;
+                    }
+                })();
+            """.trimIndent()
+            webView?.evaluateJavascript(uploadJs, null)
         }
     } catch (e: Exception) {
-        e.printStackTrace()
+        Log.e("Instergram", "Error injecting CSS/JS", e)
     }
 }
 
-fun uriFormate(data: Intent?): Array<Uri?>?{
-    val ret: Array<Uri?>? = arrayOfNulls(data!!.clipData!!.itemCount)
-    Log.e("get file", data.clipData!!.itemCount.toString())
-    for(item in 1..data.clipData!!.itemCount){
-        ret?.set(item-1, data.clipData!!.getItemAt(item-1).uri)
+fun uriFormate(data: Intent?): Array<Uri?>? {
+    if (data == null) return null
+    
+    val clipData = data.clipData
+    if (clipData != null && clipData.itemCount > 0) {
+        val ret = arrayOfNulls<Uri>(clipData.itemCount)
+        for (i in 0 until clipData.itemCount) {
+            ret[i] = clipData.getItemAt(i).uri
+        }
+        return ret
     }
-    Log.e("get file", ret.toString())
-    return ret
+    
+    val dataUri = data.data
+    if (dataUri != null) {
+        return arrayOf(dataUri)
+    }
+    
+    return null
 }
