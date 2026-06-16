@@ -49,6 +49,8 @@ class MainActivity : AppCompatActivity() {
             databaseEnabled = true
             allowFileAccess = true
             allowContentAccess = true
+            builtInZoomControls = true
+            displayZoomControls = false
         }
 
         binding.webView.loadUrl(url)
@@ -170,28 +172,7 @@ fun injectCSS(webView: WebView?, upload: Boolean = false){
             })();
         """.trimIndent()
         webView?.evaluateJavascript(js, null)
-        
-        if(upload){
-            val uploadJs = """
-                (function() {
-                    if (!window.uploadObserver) {
-                        var observ = new MutationObserver(function(mutations) {
-                            var maxHeightDiv = document.querySelector('div[style^="max-height"]');
-                            if (maxHeightDiv) maxHeightDiv.style = "max-height: 100%; min-width: 100px; max-width: 80%; width: 100px;";
-                            
-                            var minWidthDiv = document.querySelector('div[style^="min-width"]');
-                            if (minWidthDiv) minWidthDiv.style = "max-height: 100%; min-width: 100px; max-width: 80%; width: 100px;";
-                            
-                            var photoDiv = document.querySelector('div:has(> div > div > div > div > img[alt="Photo for tag placement"])');
-                            if (photoDiv) photoDiv.style = "height: 50px; width: 50px";
-                        });
-                        observ.observe(document.body, {childList: true, subtree: true});
-                        window.uploadObserver = true;
-                    }
-                })();
-            """.trimIndent()
-            webView?.evaluateJavascript(uploadJs, null)
-        }
+
     } catch (e: Exception) {
         Log.e("Instergram", "Error injecting CSS/JS", e)
     }

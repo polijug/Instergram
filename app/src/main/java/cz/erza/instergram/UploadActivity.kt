@@ -54,6 +54,10 @@ class UploadActivity : AppCompatActivity() {
         val newUA = "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.4) Gecko/20100101 Firefox/4.0"
         webView.getSettings().userAgentString = newUA
 
+        webView.setInitialScale(100);
+        webView.getSettings().builtInZoomControls = true;
+        webView.getSettings().displayZoomControls = false;
+
         webView.loadUrl(url)
     }
     val getFile = registerForActivityResult(
