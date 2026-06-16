@@ -1,18 +1,48 @@
 package cz.erza.instergram
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
 import android.webkit.CookieManager
+import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import cz.erza.instergram.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+
+    companion object {
+        const val CHANNEL_ID = "instergram_notifications"
+        const val NOTIFICATION_PERMISSION_REQUEST_CODE = 101
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = "Instagram Notifications"
+            val descriptionText = "Notifications from Instagram Web"
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
+                description = descriptionText
+            }
+            val notificationManager: NotificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,7 +51,10 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        createNotificationChannel()
+
         binding.webView.webViewClient = MyWebViewClient()
+        binding.webView.addJavascriptInterface(NotificationInterface(this, binding.webView), "AndroidNotification")
 
         // Load a web page
         val url = "https://instagram.com/direct/inbox"
@@ -44,6 +77,65 @@ class MainActivity : AppCompatActivity() {
             return true
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+    inner class NotificationInterface(private val context: Context, private val webView: WebView) {
+
+        @JavascriptInterface
+        fun requestPermission() {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(this@MainActivity, arrayOf(Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_PERMISSION_REQUEST_CODE)
+                } else {
+                    sendPermissionResult("granted")
+                }
+            } else {
+                sendPermissionResult("granted")
+            }
+        }
+
+        @JavascriptInterface
+        fun getPermission(): String {
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                    "granted"
+                } else {
+                    "default"
+                }
+            } else {
+                "granted"
+            }
+        }
+
+        @JavascriptInterface
+        fun showNotification(title: String, body: String) {
+            val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notifications_black_24dp)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true)
+
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                with(NotificationManagerCompat.from(context)) {
+                    notify(System.currentTimeMillis().toInt(), builder.build())
+                }
+            }
+        }
+
+        private fun sendPermissionResult(result: String) {
+            webView.post {
+                webView.evaluateJavascript("if (window.onNotificationPermissionResult) window.onNotificationPermissionResult('$result');", null)
+            }
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == NOTIFICATION_PERMISSION_REQUEST_CODE) {
+            val result = if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) "granted" else "denied"
+            binding.webView.evaluateJavascript("if (window.onNotificationPermissionResult) window.onNotificationPermissionResult('$result');", null)
+        }
     }
 
     private class MyWebViewClient() : WebViewClient() {
@@ -87,6 +179,31 @@ fun injectCSS(webView: WebView?, upload: Boolean = false){
         val css = "a[href^=\"/reels\"] {display: none}  a[href^=\"https://www.threads.net/\"]{display: none}"
         val js = """
             (function() {
+                // Polyfill for Notification API
+                if (!window.NotificationPolyfilled) {
+                    window.Notification = function(title, options) {
+                        this.title = title;
+                        this.options = options || {};
+                        AndroidNotification.showNotification(this.title, this.options.body || "");
+                    };
+
+                    window.Notification.permission = AndroidNotification.getPermission();
+                    
+                    window.Notification.requestPermission = function(callback) {
+                        return new Promise(function(resolve, reject) {
+                            window.onNotificationPermissionResult = function(result) {
+                                window.Notification.permission = result;
+                                if (callback) callback(result);
+                                resolve(result);
+                            };
+                            AndroidNotification.requestPermission();
+                        });
+                    };
+                    
+                    window.NotificationPolyfilled = true;
+                    console.log("Notification API polyfilled");
+                }
+
                 var style = document.getElementById('injected-style');
                 if (!style) {
                     style = document.createElement('style');
