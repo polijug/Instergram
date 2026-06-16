@@ -1,18 +1,28 @@
 package cz.erza.instergram
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
+import android.view.View
 import android.webkit.CookieManager
+import android.webkit.ValueCallback
+import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Button
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import cz.erza.instergram.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+
+    var filePath: ValueCallback<Array<Uri?>?>? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,7 +31,13 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.webView.webViewClient = MyWebViewClient()
+        binding.upload.setOnClickListener {
+            val intent = Intent(this@MainActivity, UploadActivity::class.java)
+            startActivity(intent)
+        }
+
+        binding.webView.webViewClient = MyWebViewClient(binding.upload)
+        binding.webView.webChromeClient = MyWebChromeClient(this)
 
         // Load a web page
         val url = "https://instagram.com/direct/inbox"
@@ -38,6 +54,17 @@ class MainActivity : AppCompatActivity() {
         binding.webView.loadUrl(url)
     }
 
+    val getFile = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()) { result ->
+        val uris = if (result.resultCode == Activity.RESULT_OK) {
+            uriFormate(result.data)
+        } else {
+            null
+        }
+        filePath?.onReceiveValue(uris)
+        filePath = null
+    }
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == KeyEvent.KEYCODE_BACK && binding.webView.canGoBack()) {
             binding.webView.goBack()
@@ -46,7 +73,24 @@ class MainActivity : AppCompatActivity() {
         return super.onKeyDown(keyCode, event)
     }
 
-    private class MyWebViewClient() : WebViewClient() {
+    private class MyWebChromeClient(private val myActivity: MainActivity) : WebChromeClient(){
+        override fun onShowFileChooser(
+            webView: WebView?,
+            filePathCallback: ValueCallback<Array<Uri?>?>?,
+            fileChooserParams: FileChooserParams?
+        ): Boolean {
+            myActivity.filePath = filePathCallback
+
+            val intent = fileChooserParams?.createIntent()
+            if (intent != null) {
+                myActivity.getFile.launch(intent)
+                return true
+            }
+            return false
+        }
+    }
+
+    private class MyWebViewClient(private val button : Button) : WebViewClient() {
 
         @Deprecated("Deprecated in Java")
         override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
@@ -60,6 +104,7 @@ class MainActivity : AppCompatActivity() {
             if(view?.url == "https://instagram.com/")
                 view.loadUrl("https://www.instagram.com/?variant=following")
 
+            hideButton(view?.url, button)
             super.onLoadResource(view, url)
         }
 
@@ -67,6 +112,7 @@ class MainActivity : AppCompatActivity() {
             if(view?.url == "https://instagram.com/")
                 view.loadUrl("https://www.instagram.com/?variant=following")
 
+            hideButton(url, button)
             injectCSS(view)
             super.onPageFinished(view, url)
         }
@@ -75,11 +121,21 @@ class MainActivity : AppCompatActivity() {
             if(url == "https://www.instagram.com/") {
                 view?.loadUrl("https://www.instagram.com/?variant=following")
             } else {
+                hideButton(url, button)
                 injectCSS(view)
                 super.doUpdateVisitedHistory(view, url, isReload)
             }
         }
     }
+}
+
+fun hideButton(url: String?, button: Button){
+    if (url == null) return
+    Log.d("Instergram", "URL: $url")
+    if(url.startsWith("https://www.instagram.com/direct/"))
+        button.visibility = View.INVISIBLE
+    else
+        button.visibility = View.VISIBLE
 }
 
 fun injectCSS(webView: WebView?, upload: Boolean = false){
@@ -141,3 +197,22 @@ fun injectCSS(webView: WebView?, upload: Boolean = false){
     }
 }
 
+fun uriFormate(data: Intent?): Array<Uri?>? {
+    if (data == null) return null
+    
+    val clipData = data.clipData
+    if (clipData != null && clipData.itemCount > 0) {
+        val ret = arrayOfNulls<Uri>(clipData.itemCount)
+        for (i in 0 until clipData.itemCount) {
+            ret[i] = clipData.getItemAt(i).uri
+        }
+        return ret
+    }
+    
+    val dataUri = data.data
+    if (dataUri != null) {
+        return arrayOf(dataUri)
+    }
+    
+    return null
+}

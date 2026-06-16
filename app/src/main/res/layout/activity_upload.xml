@@ -2,21 +2,21 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/container"
+    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    >
+    android:background="#FF0000"
+    tools:context=".UploadActivity">
 
     <Button
         android:id="@+id/upload"
         android:layout_width="50dp"
         android:layout_height="0dp"
-        android:text="+"
         android:background="#9F0000"
-        app:layout_wrapBehaviorInParent="included"
+        android:text="-"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"/>
+        app:layout_constraintRight_toRightOf="parent"
+         />
 
     <WebView
         android:id="@+id/webView"
@@ -28,5 +28,4 @@
         app:layout_constraintTop_toTopOf="parent">
 
     </WebView>
-
 </androidx.constraintlayout.widget.ConstraintLayout>
