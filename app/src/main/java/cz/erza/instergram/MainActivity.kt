@@ -7,13 +7,11 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
-import android.view.View
 import android.webkit.CookieManager
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.Button
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import cz.erza.instergram.databinding.ActivityMainBinding
@@ -31,12 +29,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.upload.setOnClickListener {
-            val intent = Intent(this@MainActivity, UploadActivity::class.java)
-            startActivity(intent)
-        }
-
-        binding.webView.webViewClient = MyWebViewClient(binding.upload)
+        binding.webView.webViewClient = MyWebViewClient()
         binding.webView.webChromeClient = MyWebChromeClient(this)
 
         // Load a web page
@@ -90,7 +83,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private class MyWebViewClient(private val button : Button) : WebViewClient() {
+    private class MyWebViewClient() : WebViewClient() {
 
         @Deprecated("Deprecated in Java")
         override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
@@ -104,7 +97,6 @@ class MainActivity : AppCompatActivity() {
             if(view?.url == "https://instagram.com/")
                 view.loadUrl("https://www.instagram.com/?variant=following")
 
-            hideButton(view?.url, button)
             super.onLoadResource(view, url)
         }
 
@@ -112,7 +104,6 @@ class MainActivity : AppCompatActivity() {
             if(view?.url == "https://instagram.com/")
                 view.loadUrl("https://www.instagram.com/?variant=following")
 
-            hideButton(url, button)
             injectCSS(view)
             super.onPageFinished(view, url)
         }
@@ -121,21 +112,11 @@ class MainActivity : AppCompatActivity() {
             if(url == "https://www.instagram.com/") {
                 view?.loadUrl("https://www.instagram.com/?variant=following")
             } else {
-                hideButton(url, button)
                 injectCSS(view)
                 super.doUpdateVisitedHistory(view, url, isReload)
             }
         }
     }
-}
-
-fun hideButton(url: String?, button: Button){
-    if (url == null) return
-    Log.d("Instergram", "URL: $url")
-    if(url.startsWith("https://www.instagram.com/direct/"))
-        button.visibility = View.INVISIBLE
-    else
-        button.visibility = View.VISIBLE
 }
 
 fun injectCSS(webView: WebView?, upload: Boolean = false){
